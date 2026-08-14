@@ -1,0 +1,26 @@
+{
+  "name": "debtlens",
+  "version": "1.0.0",
+  "description": "零依赖单文件 Node CLI · 技术债密度扫描器（注释锚定识别 TODO/FIXME/XXX/HACK 等，严重度加权健康分 + CI 门禁）",
+  "bin": {
+    "debtlens": "index.js"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "cli",
+    "tech-debt",
+    "todo",
+    "fixme",
+    "health",
+    "zero-dependency",
+    "ci",
+    "lint"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  }
+}
