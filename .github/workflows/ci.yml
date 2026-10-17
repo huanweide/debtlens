@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['14', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # node --test 需要 Node 18+，而 engines 声称支持 >=14。
+      # 因此 Node 14 走 bash 冒烟分支 —— CI 必须真跑 engines 声称的最低版本，
+      # 否则就是谎报支持（旧 Node 用户连测试都跑不起来）。
+      - name: Node 14 —— 冒烟（无 node --test）
+        if: matrix.node == '14'
+        shell: bash
+        run: |
+          set -e
+          echo "node: $(node -v)"
+          node index.js --version
+          node test/unit.test.js
+          node test/smoke-cli.js
+
+      - name: Node 22 —— 单元 + 冒烟
+        if: matrix.node != '14'
+        run: |
+          node -v
+          npm test
+
+      - name: 语法自检
+        run: node --check index.js
+
+  dogfood:
+    name: dogfood（用本仓自身跑门禁）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # 必须显式配阈值：debtlens 无阈值时返回 3（未决），这是刻意设计。
+      - name: 自家门禁（显式阈值）
+        run: node index.js --root . --max-total 400
+      - name: JSON 输出可解析 + basisComplete 为真
+        run: |
+          node index.js --root . --json --max-total 400 > dl.json
+          node -e "
+            const j = require('./dl.json');
+            if (j.basisComplete !== true) { console.error('basisComplete 不是 true，扫描输入不可信'); process.exit(1); }
+            if (j.gate.state !== 'pass') { console.error('门禁未通过: ' + j.gate.state + ' ' + j.gate.reason); process.exit(1); }
+            if (j.files < 1) { console.error('扫到 0 个文件，dogfood 无意义'); process.exit(1); }
+            console.log('dogfood ok: files=' + j.files + ' tags=' + j.totalTags + ' score=' + j.healthScore);
+          "
