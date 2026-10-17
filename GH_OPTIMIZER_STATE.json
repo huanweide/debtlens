@@ -1,0 +1,62 @@
+{
+  "repo": "huanweide/debtlens",
+  "lastOptimized": "2026-10-17",
+  "round": 1,
+  "status": "optimized",
+  "direction": "单点深度特化「门禁真实性 + 有害指标消除」",
+  "survival": {
+    "verdict": "保留",
+    "reason": "零依赖单文件跨语言技术债密度扫描器。竞品核实：leasot（npm 14.4.0，需 npm install 依赖包，只枚举列出 TODO 不给健康分/门禁）、SonarQube（需部署服务）、eslint（需装依赖且不识别注释债标记）。本仓把「密度→加权→健康分→CI 门禁」做成零依赖闭环，无同级替代。",
+    "competitorsChecked": ["leasot@14.4.0", "SonarQube", "eslint"]
+  },
+  "improvements": [
+    "P0 假绿灯变体A：空目录 + 配了门禁（--max-density 0）原返回 rc=0「门禁通过」，现返回 rc=3 inconclusive",
+    "P0 假绿灯变体C：完全未配门禁时也打印「门禁: 通过」rc=0，现返回 rc=3 且 configured=false",
+    "P0 有害指标：扫描 0 个文件时输出「健康分 100/100 [健康]」，现为 healthScore=null + verdict=无法评估 + basisComplete=false",
+    "P0 变体D：JSON 的 gate 只有布尔 passed，现为 {state, configured, reason, failures} 对象",
+    "P0 门禁参数完全失效：--max-total 用 parseInt 导致 '5abc' 静默截断为 5 并通过门禁；--max-total 2.5 静默截断为 2；现一律 exit 2",
+    "P0 --max-total/-1 负数被当合法阈值放行（因 Number.isFinite(-1) 为真），现 exit 2",
+    "P0 --fail-on-tags 拼错标记名（如 NOTATAG）时静默返回「通过」rc=0 —— 门禁参数写错=门禁不存在，现列出可用标记名并 exit 2",
+    "P0 --fail-on-tags 缺值/空串时门禁静默失效 rc=0，现 exit 2",
+    "P0 未知选项（-x / --totally-unknown / 拼错的 --max-totl）被完全静默吞掉 rc=0，现 exit 2",
+    "P0 --root 缺值/空串/吞掉下一个标志（--root --json）会产生误导性错误信息，现分别报准确错误并 exit 2",
+    "P1 阈值容错补全：空串（Number('')===0）、纯空白、尾随垃圾、十六进制、Infinity、负零小数全部 exit 2",
+    "P1 process.exit(main(...)) 改为 process.exitCode = run(...)：前者会截断异步刷写的 stdout，导致 --json 大输出残缺",
+    "P1 run()/main() 拆分 + HelpExit/UsageExit 哨兵异常：参数错误与运行异常分成两条干净路径，异常不再是满屏 stack trace",
+    "P1 门禁状态始终显式打印（含 pass），不再沉默 —— 沉默的绿灯是假绿灯的温床",
+    "P1 README 的 npm i -g debtlens 会装到别人的包（npm 上 debtlens 是 ColumbusLabs/DebtLens，另一功能）并抢占同名命令，已改为 clone/单文件用法并贴出证据",
+    "P1 README 的 npx -y debtlens CI 示例同样是别人的包，已改为 node <路径>/index.js 并说明原因",
+    "P1 README 补「退出码契约」表与三态说明，删末尾重复冗余段",
+    "P1 根目录 test.js 迁至 test/unit.test.js（15 组）+ 新增 test/smoke-cli.js（29 项 spawn 级）",
+    "P1 新增 .github/workflows/ci.yml：ubuntu+windows × Node 14/22 矩阵 + 独立 dogfood job（Node 14 无 node --test，走 bash 分支）",
+    "P1 新增 .gitignore 标准模板（含 .env 段）",
+    "P1 package.json 补 repository/bugs/homepage/author/files/scripts，版本 1.0.0 → 1.1.0",
+    "P2 新增两条自检门禁单测：CLI 版本号==package.json 版本号、README 标记清单==源码 TAGS 常量"
+  ],
+  "tests": {
+    "unit": "15/15 通过",
+    "smoke": "29/29 通过",
+    "total": 44,
+    "note": "两层分工刻意：单测完全不碰 process.exitCode，退出码契约只由 spawn 级冒烟验证"
+  },
+  "mutation": {
+    "applied": 15,
+    "caught": 13,
+    "escaped": 2,
+    "escapedAttribution": [
+      "空串放行（正则改松）→ 等价变异/防御纵深：显式 raw.trim()==='' 检查独立生效，仍 exit 2",
+      "未知标志短路 startsWith('-') → 等价变异/防御纵深：末尾「未知参数」兜底分支仍 usageError exit 2"
+    ],
+    "selfErrorsFound": [
+      "自身失误①：applyGate 与 main 两处都把整个 gateState 对象传给 exitCodeFor（它收 state 字符串）→ 静默返回 3。是被自己新写的 spawn 冒烟测试当场抓到的，单测当时全绿没报。",
+      "自身失误②：变异脚本匹配串写成 'fail: 2 }' 但源码是 'fail: 2, inconclusive: 3 }'，变异从未施加却输出逃逸。已修正并让未施加的变异显式报 SKIP-NOT-APPLIED。",
+      "自身失误③：测试期望把「空输入 + --fail-on-issues」写成 rc=2，实际源码给 rc=3 且 rc=3 才对 —— 空扫描下那条 no-source 警告本身就是空扫描的产物，不足为凭，inconclusive 必须优先于 fail。是测试期望写错了，不是源码错。"
+    ]
+  },
+  "commitConvention": "squash 单 commit，一条 git revert 可整体撤销",
+  "decisionLog": [
+    "决策原因：debtlens 是 CI 门禁工具，最恶劣的失败模式是扫 0 个对象却报通过（假绿灯）。故本轮不做功能新增，全部精力投向「门禁结论是否可信」——退出码三态 + basisComplete + 有害指标消除。",
+    "决策原因：README 里的 npm i -g debtlens 是会真的装错东西的坑（抢占同名命令），比 404 更恶劣，故列为 P1 必改。",
+    "决策原因：退出码从 0/2 扩展到 0/2/3 是破坏性变更，会让原先「不配阈值就跑」的 CI 从绿变红。但这是刻意的：门禁必须由使用方明确定义，工具不该替用户猜。已在 README 显式说明并给出迁移指引。"
+  ]
+}
