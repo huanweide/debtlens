@@ -1,3 +1,11 @@
+<!-- badges -->
+[![License](https://img.shields.io/github/license/huanweide/debtlens)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/huanweide/debtlens)](https://github.com/huanweide/debtlens/stargazers)
+[![Engineering Health Family](https://img.shields.io/badge/Engineering%20Health%20Family-18%20axes-22c55e)](https://github.com/huanweide/family-showcase)
+<!-- /badges -->
+
+**🔧 Part of the [Engineering Health Family](https://github.com/huanweide/family-showcase)** (18 zero-dependency checkup axes). Standalone tool — see [doctors](https://github.com/huanweide/doctors) (monorepo) and [enghealth](https://github.com/huanweide/enghealth) (unified runner).
+
 # debtlens
 
 > 零依赖单文件 Node CLI · 技术债密度扫描器
